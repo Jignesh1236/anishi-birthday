@@ -1,8 +1,26 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Sparkles, Gift, Star, Music, VolumeX, ChevronDown, PartyPopper } from "lucide-react";
+import { Sparkles, Gift, Star, Music, VolumeX, ChevronDown, PartyPopper, Cake } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+
+function useReducedMotion() {
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setPrefersReducedMotion(mediaQuery.matches);
+    
+    const listener = (event: MediaQueryListEvent) => {
+      setPrefersReducedMotion(event.matches);
+    };
+    
+    mediaQuery.addEventListener("change", listener);
+    return () => mediaQuery.removeEventListener("change", listener);
+  }, []);
+  
+  return prefersReducedMotion;
+}
 
 interface Confetti {
   id: number;
@@ -38,24 +56,24 @@ const GIFT_MESSAGES: GiftBox[] = [
     id: 1,
     color: "#FF6B9D",
     ribbonColor: "#C77DFF",
-    message: "Tum bahut special ho! Duniya ki sabse pyari insaan!",
-    icon: "heart",
+    message: "You're absolutely amazing! Keep shining bright like the star you are!",
+    icon: "star",
     opened: false,
   },
   {
     id: 2,
     color: "#C77DFF",
     ribbonColor: "#FFE66D",
-    message: "Har din tumhari smile se roshni aati hai!",
-    icon: "star",
+    message: "Wishing you endless adventures, laughter, and all the cake you can eat!",
+    icon: "sparkle",
     opened: false,
   },
   {
     id: 3,
     color: "#FFE66D",
     ribbonColor: "#FF6B9D",
-    message: "Tumhari khushiyan hamesha bani rahe!",
-    icon: "sparkle",
+    message: "May this year bring you success, happiness, and unforgettable memories!",
+    icon: "star",
     opened: false,
   },
 ];
@@ -199,7 +217,7 @@ function BirthdayCake({ onAllCandlesLit }: { onAllCandlesLit: () => void }) {
           >
             <div className="absolute inset-x-0 bottom-2 flex justify-around">
               {[...Array(7)].map((_, i) => (
-                <Heart key={i} className="w-4 h-4 text-birthday-pink fill-birthday-pink" />
+                <Star key={i} className="w-4 h-4 text-birthday-pink fill-birthday-pink" />
               ))}
             </div>
           </div>
@@ -219,7 +237,7 @@ function BirthdayCake({ onAllCandlesLit }: { onAllCandlesLit: () => void }) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            Candles par click karo unhe jalane ke liye!
+            Click on the candles to light them up!
           </motion.p>
         ) : (
           <motion.div
@@ -230,10 +248,10 @@ function BirthdayCake({ onAllCandlesLit }: { onAllCandlesLit: () => void }) {
             transition={{ duration: 0.5 }}
           >
             <p className="text-2xl md:text-3xl font-dancing text-birthday-pink mb-2">
-              Ab aankhen band karo...
+              Now close your eyes...
             </p>
             <p className="text-xl md:text-2xl font-dancing text-birthday-purple animate-pulse-glow">
-              Aur wish karo!
+              And make a wish!
             </p>
           </motion.div>
         )}
@@ -242,38 +260,51 @@ function BirthdayCake({ onAllCandlesLit }: { onAllCandlesLit: () => void }) {
   );
 }
 
-function GiftBoxComponent({ gift, onOpen }: { gift: GiftBox; onOpen: () => void }) {
+function GiftBoxComponent({ gift, onOpen, reducedMotion }: { gift: GiftBox; onOpen: () => void; reducedMotion: boolean }) {
   const [isShaking, setIsShaking] = useState(false);
 
   const handleClick = () => {
     if (!gift.opened) {
-      setIsShaking(true);
-      setTimeout(() => {
-        setIsShaking(false);
+      if (!reducedMotion) {
+        setIsShaking(true);
+        setTimeout(() => {
+          setIsShaking(false);
+          onOpen();
+        }, 500);
+      } else {
         onOpen();
-      }, 500);
+      }
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleClick();
     }
   };
 
   const getIcon = () => {
     switch (gift.icon) {
-      case "heart":
-        return <Heart className="w-8 h-8 text-birthday-pink fill-birthday-pink" />;
       case "star":
         return <Star className="w-8 h-8 text-birthday-yellow fill-birthday-yellow" />;
       case "sparkle":
         return <Sparkles className="w-8 h-8 text-birthday-purple" />;
       default:
-        return <Gift className="w-8 h-8" />;
+        return <Gift className="w-8 h-8 text-birthday-purple" />;
     }
   };
 
   return (
     <motion.div
-      className={`cursor-pointer ${isShaking ? "animate-gift-shake" : ""}`}
-      whileHover={{ scale: gift.opened ? 1 : 1.05, y: gift.opened ? 0 : -8 }}
-      whileTap={{ scale: 0.95 }}
+      className={`cursor-pointer ${isShaking && !reducedMotion ? "animate-gift-shake" : ""}`}
+      whileHover={reducedMotion ? {} : { scale: gift.opened ? 1 : 1.05, y: gift.opened ? 0 : -8 }}
+      whileTap={reducedMotion ? {} : { scale: 0.95 }}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={gift.opened ? -1 : 0}
+      role="button"
+      aria-label={gift.opened ? `Gift ${gift.id} opened` : `Open gift ${gift.id}`}
       data-testid={`gift-box-${gift.id}`}
     >
       <Card className="relative w-40 h-48 md:w-48 md:h-56 overflow-hidden border-0 shadow-xl">
@@ -348,7 +379,7 @@ function GiftBoxComponent({ gift, onOpen }: { gift: GiftBox; onOpen: () => void 
   );
 }
 
-function BalloonGame({ onPop }: { onPop: () => void }) {
+function BalloonGame({ onPop, reducedMotion }: { onPop: () => void; reducedMotion: boolean }) {
   const [balloons, setBalloons] = useState<Balloon[]>([]);
   const [score, setScore] = useState(0);
   const [gameStarted, setGameStarted] = useState(false);
@@ -364,11 +395,11 @@ function BalloonGame({ onPop }: { onPop: () => void }) {
         color: BALLOON_COLORS[Math.floor(Math.random() * BALLOON_COLORS.length)],
         size: 50 + Math.random() * 30,
         popped: false,
-        delay: Math.random() * 3,
+        delay: reducedMotion ? 0 : Math.random() * 3,
       });
     }
     setBalloons(newBalloons);
-  }, []);
+  }, [reducedMotion]);
 
   const popBalloon = (id: number) => {
     setBalloons((prev) =>
@@ -378,11 +409,18 @@ function BalloonGame({ onPop }: { onPop: () => void }) {
     onPop();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent, id: number) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      popBalloon(id);
+    }
+  };
+
   return (
     <div className="relative min-h-[400px] w-full overflow-hidden rounded-2xl bg-gradient-to-b from-birthday-sky/30 to-birthday-lavender/30">
       {!gameStarted ? (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
-          <PartyPopper className="w-16 h-16 text-birthday-pink animate-bounce-slow" />
+          <PartyPopper className={`w-16 h-16 text-birthday-pink ${reducedMotion ? "" : "animate-bounce-slow"}`} />
           <p className="text-xl font-quicksand font-semibold text-birthday-purple">
             Balloon Pop Game!
           </p>
@@ -391,7 +429,7 @@ function BalloonGame({ onPop }: { onPop: () => void }) {
             className="bg-birthday-pink hover:bg-birthday-coral text-white font-quicksand font-semibold px-8 py-3 rounded-full"
             data-testid="start-balloon-game"
           >
-            Shuru Karo!
+            Let's Play!
           </Button>
         </div>
       ) : (
@@ -408,17 +446,21 @@ function BalloonGame({ onPop }: { onPop: () => void }) {
                 !balloon.popped && (
                   <motion.div
                     key={balloon.id}
-                    className="absolute cursor-pointer z-10"
+                    className="absolute cursor-pointer z-10 focus:outline-none focus:ring-2 focus:ring-birthday-purple focus:ring-offset-2 rounded-full"
                     style={{ left: `${balloon.x}%` }}
-                    initial={{ y: "100vh" }}
-                    animate={{ y: "-120%" }}
-                    transition={{
+                    initial={{ y: reducedMotion ? "20vh" : "100vh" }}
+                    animate={{ y: reducedMotion ? "10vh" : "-120%" }}
+                    transition={reducedMotion ? { duration: 0 } : {
                       duration: 6 + Math.random() * 4,
                       delay: balloon.delay,
                       ease: "linear",
                     }}
-                    whileHover={{ scale: 1.1 }}
+                    whileHover={reducedMotion ? {} : { scale: 1.1 }}
                     onClick={() => popBalloon(balloon.id)}
+                    onKeyDown={(e) => handleKeyDown(e, balloon.id)}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Pop balloon ${balloon.id + 1}`}
                     data-testid={`balloon-${balloon.id}`}
                   >
                     {/* Balloon */}
@@ -452,17 +494,17 @@ function BalloonGame({ onPop }: { onPop: () => void }) {
             >
               <Sparkles className="w-12 h-12 text-birthday-yellow animate-sparkle" />
               <p className="text-2xl font-quicksand font-bold text-birthday-purple">
-                Bahut Badiya!
+                Amazing!
               </p>
               <p className="text-lg font-quicksand text-birthday-pink">
-                Tumne saare balloons phodd diye!
+                You popped all the balloons!
               </p>
               <Button
                 onClick={startGame}
                 className="bg-birthday-purple hover:bg-birthday-pink text-white font-quicksand font-semibold px-6 py-2 rounded-full mt-2"
                 data-testid="restart-balloon-game"
               >
-                Phir Se Khelo!
+                Play Again!
               </Button>
             </motion.div>
           )}
@@ -477,10 +519,11 @@ export default function BirthdayPage() {
   const [showConfetti, setShowConfetti] = useState(true);
   const [gifts, setGifts] = useState(GIFT_MESSAGES);
   const [isMuted, setIsMuted] = useState(true);
+  const reducedMotion = useReducedMotion();
 
   // Initial confetti burst
   useEffect(() => {
-    if (showConfetti) {
+    if (showConfetti && !reducedMotion) {
       const newConfetti: Confetti[] = [];
       for (let i = 0; i < 50; i++) {
         newConfetti.push({
@@ -498,10 +541,13 @@ export default function BirthdayPage() {
       }, 6000);
 
       return () => clearTimeout(timeout);
+    } else if (reducedMotion) {
+      setShowConfetti(false);
     }
-  }, [showConfetti]);
+  }, [showConfetti, reducedMotion]);
 
   const triggerConfetti = () => {
+    if (reducedMotion) return;
     setShowConfetti(true);
     const newConfetti: Confetti[] = [];
     for (let i = 0; i < 30; i++) {
@@ -558,7 +604,7 @@ export default function BirthdayPage() {
           animate={{ y: [0, -10, 0], rotate: [0, -10, 0] }}
           transition={{ duration: 2.5, repeat: Infinity, delay: 0.5 }}
         >
-          <Heart className="w-6 h-6 fill-birthday-pink text-birthday-pink" />
+          <Gift className="w-6 h-6 text-birthday-purple" />
         </motion.div>
         <motion.div
           className="absolute bottom-40 left-20"
@@ -605,11 +651,11 @@ export default function BirthdayPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 1 }}
           >
-            <Heart className="w-6 h-6 text-birthday-pink fill-birthday-pink animate-heart-beat" />
+            <Sparkles className="w-6 h-6 text-birthday-yellow animate-sparkle" />
             <span className="text-lg md:text-xl text-birthday-purple font-dancing">
-              Tumhara din bahut khaas ho!
+              Wishing you the most amazing day ever!
             </span>
-            <Heart className="w-6 h-6 text-birthday-pink fill-birthday-pink animate-heart-beat" />
+            <Sparkles className="w-6 h-6 text-birthday-yellow animate-sparkle" />
           </motion.div>
         </motion.div>
 
@@ -652,7 +698,7 @@ export default function BirthdayPage() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
         >
-          Har gift mein ek special message hai tumhare liye!
+          Each gift has a special message just for you!
         </motion.p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {gifts.map((gift, index) => (
@@ -663,7 +709,7 @@ export default function BirthdayPage() {
               viewport={{ once: true }}
               transition={{ delay: index * 0.1 }}
             >
-              <GiftBoxComponent gift={gift} onOpen={() => openGift(gift.id)} />
+              <GiftBoxComponent gift={gift} onOpen={() => openGift(gift.id)} reducedMotion={reducedMotion} />
             </motion.div>
           ))}
         </div>
@@ -685,7 +731,7 @@ export default function BirthdayPage() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
         >
-          Saare balloons phodne ki koshish karo!
+          Try to pop all the balloons before they fly away!
         </motion.p>
         <motion.div
           className="w-full max-w-2xl"
@@ -693,7 +739,7 @@ export default function BirthdayPage() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
         >
-          <BalloonGame onPop={triggerConfetti} />
+          <BalloonGame onPop={triggerConfetti} reducedMotion={reducedMotion} />
         </motion.div>
       </section>
 
@@ -712,7 +758,7 @@ export default function BirthdayPage() {
           animate={{ scale: [1, 1.3, 1] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
-          <Heart className="w-8 h-8 fill-birthday-pink text-birthday-pink" />
+          <PartyPopper className="w-8 h-8 text-birthday-coral" />
         </motion.div>
         <motion.div
           className="absolute bottom-40 left-[20%]"
@@ -733,7 +779,7 @@ export default function BirthdayPage() {
             transition={{ duration: 2, repeat: Infinity }}
             className="mb-8"
           >
-            <Heart className="w-16 h-16 mx-auto text-birthday-pink fill-birthday-pink" />
+            <Gift className="w-16 h-16 mx-auto text-birthday-purple" />
           </motion.div>
 
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-pacifico text-birthday-purple mb-8">
@@ -741,10 +787,10 @@ export default function BirthdayPage() {
           </h2>
 
           <div className="space-y-4 text-lg md:text-xl font-quicksand text-gray-700">
-            <p>Tumhara ye special din bahut khaas ho!</p>
-            <p>Dher saari khushiyan, pyaar aur masti!</p>
-            <p className="text-birthday-pink font-semibold">
-              Bahut saara pyaar tumhare liye!
+            <p>Here's to an incredible year ahead filled with joy!</p>
+            <p>May all your dreams come true and every day be magical!</p>
+            <p className="text-birthday-purple font-semibold">
+              You deserve all the happiness in the world!
             </p>
           </div>
 
@@ -784,7 +830,7 @@ export default function BirthdayPage() {
       <footer className="py-8 text-center bg-birthday-peach/50">
         <p className="text-birthday-purple/60 font-quicksand text-sm">
           Made with{" "}
-          <Heart className="inline w-4 h-4 text-birthday-pink fill-birthday-pink" />{" "}
+          <Sparkles className="inline w-4 h-4 text-birthday-yellow" />{" "}
           for Amishi
         </p>
       </footer>
